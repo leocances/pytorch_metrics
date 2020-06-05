@@ -1,10 +1,11 @@
 import torch
+import numpy as np
 
 
 class Metrics:
     def __init__(self, epsilon=1e-10):
         self.value = None
-        self.accumulate_value = None
+        self.accumulate_value = 0
         self.count = 0
         self.epsilon = epsilon
 
@@ -75,7 +76,7 @@ class Ratio(Metrics):
 
 class Precision(Metrics):
     def __init__(self, epsilon=1e-10):
-        super().__init__(epsilon)
+        Metrics.__init__(self, epsilon)
 
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
@@ -91,10 +92,6 @@ class Precision(Metrics):
 
         return self.accumulate_value / self.value
 
-    @property
-    def precision(self):
-        return self.value
-
 
 class Recall(Metrics):
     def __init__(self, epsilon=1e-10):
@@ -106,20 +103,18 @@ class Recall(Metrics):
         with torch.set_grad_enabled(False):
             true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)))
             possible_positives = torch.sum(torch.round(torch.clamp(y_true, 0, 1)))
+            
+            if possible_positives == 0:
+                return 0.0
 
             self.value = true_positives / (possible_positives + self.epsilon)
-
             self.accumulate_value += self.value
 
             return self.accumulate_value / self.count
 
-    @property
-    def recall(self):
-        return self.value
-
 
 class FScore(Metrics):
-    def __init__(self, epsilon=1e-10):
+    def __init__(self, epsilon=np.spacing(1)):
         Metrics.__init__(self, epsilon)
         self.precision_func = Precision(epsilon)
         self.recall_func = Recall(epsilon)
@@ -127,22 +122,13 @@ class FScore(Metrics):
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
-        precision = self.precision_func(y_pred, y_true)
-        recall = self.recall_func(y_pred, y_true)
+        self.precision = self.precision_func(y_pred, y_true)
+        self.recall = self.recall_func(y_pred, y_true)
+        
+        if self.precision == 0 and self.recall == 0:
+            return 0.0
 
         with torch.set_grad_enabled(False):
-            self.value = 2 * ((precision * recall) / (precision + recall + self.epsilon))
+            self.value = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
             self.accumulate_value += self.value
             return self.accumulate_value / self.count
-
-    @property
-    def f1(self):
-        return self.value
-
-    @property
-    def precision(self):
-        return self.precision.precision
-
-    @property
-    def recall(self):
-        return self.recall_func.recall
