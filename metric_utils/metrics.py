@@ -27,7 +27,7 @@ class BinaryAccuracy(Metrics):
         with torch.set_grad_enabled(False):
             y_pred = (y_pred > 0.5).float()
             correct = (y_pred == y_true).float().sum()
-            self.value = correct / (y_true.shape[0] * y_true.shape[1])
+            self.value = correct / np.prod(y_true.shape)
 
             self.accumulate_value += self.value
             return self.accumulate_value / self.count
