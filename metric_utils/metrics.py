@@ -87,7 +87,7 @@ class Precision(Metrics):
             predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)))
 
             if predicted_positives == 0:
-                self.value = 0.0
+                self.value = torch.as_tensor(0.0)
             else:
                 self.value = true_positives / (predicted_positives + self.epsilon)
                 
@@ -107,7 +107,7 @@ class Recall(Metrics):
             possible_positives = torch.sum(torch.round(torch.clamp(y_true, 0, 1)))
             
             if possible_positives == 0:
-                self.value = 0.0
+                self.value = torch.as_tensor(0.0)
             else:
                 self.value = true_positives / (possible_positives + self.epsilon)
                 
@@ -129,7 +129,7 @@ class FScore(Metrics):
             self.recall = self.recall_func(y_pred, y_true)
 
             if self.precision == 0 and self.recall == 0:
-                self.value = 0.0
+                self.value = torch.as_tensor(0.0)
             else:
                 self.value = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
                 
