@@ -81,16 +81,18 @@ class Precision(Metrics):
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
-        true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)))
-        predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)))
+        with torch.set_grad_enabled(False):
 
-        if predicted_positives == 0:
-            return 0.0
+            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)))
+            predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)))
 
-        self.value = true_positives / (predicted_positives + self.epsilon)
-        self.accumulate_value += self.value
-
-        return self.accumulate_value / self.value
+            if predicted_positives == 0:
+                self.value = 0.0
+            else:
+                self.value = true_positives / (predicted_positives + self.epsilon)
+                
+            self.accumulate_value += self.value
+            return self.accumulate_value / self.value
 
 
 class Recall(Metrics):
@@ -105,11 +107,11 @@ class Recall(Metrics):
             possible_positives = torch.sum(torch.round(torch.clamp(y_true, 0, 1)))
             
             if possible_positives == 0:
-                return 0.0
-
-            self.value = true_positives / (possible_positives + self.epsilon)
+                self.value = 0.0
+            else:
+                self.value = true_positives / (possible_positives + self.epsilon)
+                
             self.accumulate_value += self.value
-
             return self.accumulate_value / self.count
 
 
@@ -122,13 +124,14 @@ class FScore(Metrics):
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
-        self.precision = self.precision_func(y_pred, y_true)
-        self.recall = self.recall_func(y_pred, y_true)
-        
-        if self.precision == 0 and self.recall == 0:
-            return 0.0
-
         with torch.set_grad_enabled(False):
-            self.value = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
+            self.precision = self.precision_func(y_pred, y_true)
+            self.recall = self.recall_func(y_pred, y_true)
+
+            if self.precision == 0 and self.recall == 0:
+                self.value = 0.0
+            else:
+                self.value = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
+                
             self.accumulate_value += self.value
             return self.accumulate_value / self.count
