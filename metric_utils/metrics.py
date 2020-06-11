@@ -75,18 +75,20 @@ class Ratio(Metrics):
 
 
 class Precision(Metrics):
-    def __init__(self, epsilon=1e-10):
+    def __init__(self, dim = None, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
+        self.dim = dim
 
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
+            dim = () if self.dim is None else self.dim
 
-            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)))
-            predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)))
+            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)), dim=dim)
+            predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)), dim=dim)
 
-            if predicted_positives == 0:
+            if self.dim is None and predicted_positives == 0:
                 self.value = torch.as_tensor(0.0)
             else:
                 self.value = true_positives / (predicted_positives + self.epsilon)
@@ -96,17 +98,20 @@ class Precision(Metrics):
 
 
 class Recall(Metrics):
-    def __init__(self, epsilon=1e-10):
+    def __init__(self, dim = None, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
+        self.dim = dim
 
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
-            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)))
-            possible_positives = torch.sum(torch.round(torch.clamp(y_true, 0, 1)))
+            dim = () if self.dim is None else self.dim            
             
-            if possible_positives == 0:
+            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0.0, 1.0)), dim=dim)
+            possible_positives = torch.sum(torch.clamp(y_true, 0.0, 1.0), dim=dim)
+            
+            if self.dim is None and possible_positives == 0:
                 self.value = torch.as_tensor(0.0)
             else:
                 self.value = true_positives / (possible_positives + self.epsilon)
@@ -116,19 +121,23 @@ class Recall(Metrics):
 
 
 class FScore(Metrics):
-    def __init__(self, epsilon=np.spacing(1)):
+    def __init__(self, dim = None, epsilon=np.spacing(1)):
         Metrics.__init__(self, epsilon)
-        self.precision_func = Precision(epsilon)
-        self.recall_func = Recall(epsilon)
+        self.dim = dim
+        
+        self.precision_func = Precision(dim, epsilon)
+        self.recall_func = Recall(dim, epsilon)
 
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
+            dim = () if self.dim is None else self.dim
+            
             self.precision = self.precision_func(y_pred, y_true)
             self.recall = self.recall_func(y_pred, y_true)
 
-            if self.precision == 0 and self.recall == 0:
+            if self.dim is None and (self.precision == 0 and self.recall == 0):
                 self.value = torch.as_tensor(0.0)
             else:
                 self.value = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
