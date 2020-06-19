@@ -17,7 +17,7 @@ class Metrics:
         self.count += 1
 
 
-class ContinueAverage(Metrics):
+class FuncContinueAverage(Metrics):
     def __init__(self, func, epsilon=1e-10):
         super().__init__(epsilon)
         self.func = func
@@ -36,6 +36,19 @@ class ContinueAverage(Metrics):
     @property
     def mean(self):
         return self.accumulate_value / self.count
+
+
+class ContinueAverage(Metrics):
+    def __init__(self, epsilon=1e-10):
+        super().__init__(epsilon)
+
+    def __call__(self, value):
+        super().__call__(None, None)
+        self.value_ = value
+        self.accumulate_value += self.value_
+
+        return self.accumulate_value / self.count
+
 
 
 class BinaryAccuracy(Metrics):
