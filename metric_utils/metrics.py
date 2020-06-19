@@ -17,6 +17,19 @@ class Metrics:
         self.count += 1
 
 
+class ContinueAverage(Metrics):
+    def __init__(self, func, epsilon=1e-10):
+        super().__init__(epsilon)
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        super().__call__(None, None)
+        self.value = self.func(*args, **kwargs)
+        self.accumulate_value += self.value
+
+        return self.accumulate_value / self.count
+
+
 class BinaryAccuracy(Metrics):
     def __init__(self, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
@@ -144,3 +157,16 @@ class FScore(Metrics):
                 
             self.accumulate_value += self.value
             return self.accumulate_value / self.count
+
+
+if __name__ == '__main__':
+    def test(i):
+        return i
+
+    ca_func = ContinueAverage(test)
+
+    for i in range(100):
+        ca = ca_func(i)
+
+    print(ca)
+    print(sum(range(100)) / 100)
