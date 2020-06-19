@@ -4,7 +4,7 @@ import numpy as np
 
 class Metrics:
     def __init__(self, epsilon=1e-10):
-        self.value = None
+        self.value_ = None
         self.accumulate_value = 0
         self.count = 0
         self.epsilon = epsilon
@@ -24,9 +24,17 @@ class ContinueAverage(Metrics):
 
     def __call__(self, *args, **kwargs):
         super().__call__(None, None)
-        self.value = self.func(*args, **kwargs)
-        self.accumulate_value += self.value
+        self.value_ = self.func(*args, **kwargs)
+        self.accumulate_value += self.value_
 
+        return self
+
+    @property
+    def value(self):
+        return self.value_
+
+    @property
+    def mean(self):
         return self.accumulate_value / self.count
 
 
@@ -40,14 +48,14 @@ class BinaryAccuracy(Metrics):
         with torch.set_grad_enabled(False):
             y_pred = (y_pred > 0.5).float()
             correct = (y_pred == y_true).float().sum()
-            self.value = correct / np.prod(y_true.shape)
+            self.value_ = correct / np.prod(y_true.shape)
 
-            self.accumulate_value += self.value
+            self.accumulate_value += self.value_
             return self.accumulate_value / self.count
 
     @property
     def accuracy(self):
-        return self.value
+        return self.value_
 
 
 class CategoricalAccuracy(Metrics):
@@ -58,14 +66,14 @@ class CategoricalAccuracy(Metrics):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
-            self.value = torch.mean((y_true == y_pred).float())
-            self.accumulate_value += self.value
+            self.value_ = torch.mean((y_true == y_pred).float())
+            self.accumulate_value += self.value_
 
             return self.accumulate_value / self.count
 
     @property
     def accuracy(self):
-        return self.value
+        return self.value_
 
 
 class Ratio(Metrics):
@@ -77,14 +85,14 @@ class Ratio(Metrics):
 
         results = zip(y_pred, y_adv_pred)
         results_bool = [int(r[0] != r[1]) for r in results]
-        self.value = sum(results_bool) / len(results_bool)
-        self.accumulate_value += self.value
+        self.value_ = sum(results_bool) / len(results_bool)
+        self.accumulate_value += self.value_
 
         return self.accumulate_value / self.count
 
     @property
     def ratio(self):
-        return self.value
+        return self.value_
 
 
 class Precision(Metrics):
@@ -102,12 +110,12 @@ class Precision(Metrics):
             predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)), dim=dim)
 
             if self.dim is None and predicted_positives == 0:
-                self.value = torch.as_tensor(0.0)
+                self.value_ = torch.as_tensor(0.0)
             else:
-                self.value = true_positives / (predicted_positives + self.epsilon)
+                self.value_ = true_positives / (predicted_positives + self.epsilon)
                 
-            self.accumulate_value += self.value
-            return self.accumulate_value / self.value
+            self.accumulate_value += self.value_
+            return self.accumulate_value / self.value_
 
 
 class Recall(Metrics):
@@ -125,11 +133,11 @@ class Recall(Metrics):
             possible_positives = torch.sum(torch.clamp(y_true, 0.0, 1.0), dim=dim)
             
             if self.dim is None and possible_positives == 0:
-                self.value = torch.as_tensor(0.0)
+                self.value_ = torch.as_tensor(0.0)
             else:
-                self.value = true_positives / (possible_positives + self.epsilon)
+                self.value_ = true_positives / (possible_positives + self.epsilon)
                 
-            self.accumulate_value += self.value
+            self.accumulate_value += self.value_
             return self.accumulate_value / self.count
 
 
@@ -151,12 +159,12 @@ class FScore(Metrics):
             self.recall = self.recall_func(y_pred, y_true)
 
             if self.dim is None and (self.precision == 0 and self.recall == 0):
-                self.value = torch.as_tensor(0.0)
+                self.value_ = torch.as_tensor(0.0)
             else:
-                self.value = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
+                self.value_ = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
                 
-            self.accumulate_value += self.value
-            return self.accumulate_value / self.count
+            self.accumulate_value += self.value_
+            return self.accumulate_value / self.count_
 
 
 if __name__ == '__main__':
@@ -166,7 +174,7 @@ if __name__ == '__main__':
     ca_func = ContinueAverage(test)
 
     for i in range(100):
-        ca = ca_func(i)
+        ca = ca_func(i).mean
 
     print(ca)
     print(sum(range(100)) / 100)
