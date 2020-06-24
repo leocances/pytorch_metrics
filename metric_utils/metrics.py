@@ -15,6 +15,14 @@ class Metrics:
 
     def __call__(self, y_pred, y_true):
         self.count += 1
+        
+    @property
+    def value(self):
+        return self.value_
+
+    @property
+    def mean(self):
+        return self.accumulate_value / self.count
 
 
 class FuncContinueAverage(Metrics):
@@ -28,14 +36,6 @@ class FuncContinueAverage(Metrics):
         self.accumulate_value += self.value_
 
         return self
-
-    @property
-    def value(self):
-        return self.value_
-
-    @property
-    def mean(self):
-        return self.accumulate_value / self.count
 
 
 class ContinueAverage(Metrics):
@@ -108,6 +108,20 @@ class Ratio(Metrics):
         return self.value_
 
 
+class BinaryRatio(Metrics):
+    def __init__(self, epsilon=1e-10):
+        Metrics.__init__(self, epsilon)
+        
+    def __call__(self, y_pred, y_true):
+        nb_pred = torch.sum(y_pred)
+        nb_true = torch.sum(y_true)
+        
+        self.value_ = nb_pred / nb_true
+        self.accumulate_value += self.value_
+        
+        return self.accumulate_value / self.count
+    
+    
 class Precision(Metrics):
     def __init__(self, dim = None, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
@@ -128,8 +142,7 @@ class Precision(Metrics):
                 self.value_ = true_positives / (predicted_positives + self.epsilon)
                 
             self.accumulate_value += self.value_
-            return self.accumulate_value / self.value_
-
+            return self.accumulate_value / self.count
 
 class Recall(Metrics):
     def __init__(self, dim = None, epsilon=1e-10):
@@ -177,7 +190,7 @@ class FScore(Metrics):
                 self.value_ = 2 * ((self.precision_func.value * self.recall_func.value) / (self.precision_func.value + self.recall_func.value + self.epsilon))
                 
             self.accumulate_value += self.value_
-            return self.accumulate_value / self.count_
+            return self.accumulate_value / self.count
 
 
 if __name__ == '__main__':
