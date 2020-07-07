@@ -14,7 +14,19 @@ fscore_func = FScore(epsilon=1e-6)
 
 ...
 
-f1 = fscore_func(pred, true)
+fscore = fscore_func(pred, true)
+
+# get the current value of the metric
+fscore_value = fscore.value
+
+# get the value of the running mean
+fscore_running_mean = fscore.mean
+
+# get the std of the metric at the current state
+fscore_std = fscore.std
+
+# reset all value (use at the begining of the epoch)
+fscore_func.reset()
 
 ```
 
