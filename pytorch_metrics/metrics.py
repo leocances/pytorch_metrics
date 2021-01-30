@@ -13,7 +13,6 @@ class Metrics:
         self.accumulate_value = 0
         self.epsilon = epsilon
 
-
     def reset(self):
         self.values = []
 
@@ -40,14 +39,12 @@ class Metrics:
         return stats.kurtosis(self.values, axis=axis)
 
 
-
-
 class FuncContinueAverage(Metrics):
     def __init__(self, func, epsilon=1e-10):
         super().__init__(epsilon)
         self.func = func
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> self:
         super().__call__(None, None)
         self.values.append(self.func(*args, **kwargs))
 
@@ -58,7 +55,7 @@ class ContinueAverage(Metrics):
     def __init__(self, epsilon=1e-10):
         super().__init__(epsilon)
 
-    def __call__(self, value):
+    def __call__(self, value) -> self:
         super().__call__(None, None)
         self.values.append(value)
 
@@ -69,7 +66,8 @@ class BinaryAccuracy(Metrics):
     def __init__(self, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
 
-    def __call__(self, y_pred, y_true, threshold = None):
+    def __call__(self, y_pred: Tensor, y_true: Tensor,
+                 threshold: Union[float, list[float]]) -> self:
         super().__call__(y_pred, y_true)
 
         # Compute the accuracy
@@ -94,7 +92,7 @@ class CategoricalAccuracy(Metrics):
     def __init__(self, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: Tensor, y_true: Tensor) -> self:
         super().__call__(y_pred, y_true)
 
         # Check if y_pred is of type long and contain class index
@@ -111,7 +109,7 @@ class Ratio(Metrics):
     def __init__(self, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
 
-    def __call__(self, y1, y2):
+    def __call__(self, y1: Tensor, y2: Tensor) -> self:
         super().__call__(y1, y2)
 
         results = zip(y1, y2)
@@ -126,7 +124,8 @@ class Precision(Metrics):
         Metrics.__init__(self, epsilon)
         self.dim = dim
 
-    def __call__(self, y_pred, y_true, threshold = None):
+    def __call__(self, y_pred: Tensor, y_true: Tensor,
+                 threshold: Union[float, list[float]]) -> self:
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
@@ -161,7 +160,8 @@ class Recall(Metrics):
         Metrics.__init__(self, epsilon)
         self.dim = dim
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: Tensor, y_true: Tensor,
+                 threshold: Union[float, list[float]]) -> self:
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
@@ -199,7 +199,7 @@ class FScore(Metrics):
         self.precision_func = Precision(dim, epsilon)
         self.recall_func = Recall(dim, epsilon)
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred: Tensor, y_true: Tensor):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
