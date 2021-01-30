@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='metric_utils',
+    name='pytorch_metrics',
     version='2.0.0',
     url='https://github.com/leocances/pytorch_metrics.git',
     author='Leo Cances',

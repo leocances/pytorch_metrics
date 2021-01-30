@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import functools
+from pytorch_metrics.utils import is_binary
 
 
 class Metrics:
@@ -13,7 +14,7 @@ class Metrics:
     def reset(self):
         self.values = []
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred, y_true, **kwargs):
         pass
 
     @property
@@ -21,16 +22,15 @@ class Metrics:
         return self.values[-1]
 
     @functools.lru_cache
-    @property
     def mean(self):
         nb_value = len(self.values)
         accumulate = sum(self.values)
         return accumulate / nb_value
 
     @functools.lru_cache
-    @property
     def std(self):
         return np.std(self.values)
+
 
 
 class FuncContinueAverage(Metrics):
@@ -60,11 +60,21 @@ class BinaryAccuracy(Metrics):
     def __init__(self, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred, y_true, threshold = None):
         super().__call__(y_pred, y_true)
 
+        # Compute the accuracy
         with torch.set_grad_enabled(False):
-            y_pred = (y_pred > 0.5).float()
+            
+            # Test if the y_pred given is not binary
+            if not is_binary(y_pred):
+
+                # If no threshold provided raise error
+                if threshold is None:
+                    raise ValueError("To calc binary accuracy you need to provide binary y_pred (or use threshold param)")
+
+                y_pred = (y_pred > threshold).float()
+
             correct = (y_pred == y_true).float().sum()
             self.values.append(correct / np.prod(y_true.shape))
 
@@ -78,24 +88,24 @@ class CategoricalAccuracy(Metrics):
     def __call__(self, y_pred, y_true):
         super().__call__(y_pred, y_true)
 
+        # Check if y_pred is of type long and contain class index
+        if y_pred.dtype != torch.long:
+            raise ValueError("To calc Categorical accurcy you need to provide long y_pred, containing only class index")
+
         with torch.set_grad_enabled(False):
             self.values.append(torch.mean((y_true == y_pred).float()))
 
         return self
-
-    @property
-    def accuracy(self):
-        return self.value_
 
 
 class Ratio(Metrics):
     def __init__(self, epsilon=1e-10):
         Metrics.__init__(self, epsilon)
 
-    def __call__(self, y_pred, y_adv_pred):
-        super().__call__(y_pred, y_adv_pred)
+    def __call__(self, y1, y2):
+        super().__call__(y1, y2)
 
-        results = zip(y_pred, y_adv_pred)
+        results = zip(y1, y2)
         results_bool = [int(r[0] != r[1]) for r in results]
         self.values.append(sum(results_bool) / len(results_bool))
 
@@ -107,19 +117,30 @@ class Precision(Metrics):
         Metrics.__init__(self, epsilon)
         self.dim = dim
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred, y_true, threshold = None):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
+
+            # Test if the y_pred given is not binary
+            if not is_binary(y_pred):
+
+                # If no threshold provided raise error
+                if threshold is None:
+                    raise ValueError("To calc binary accuracy you need to provide binary y_pred (or use threshold param)")
+
+                y_pred = (y_pred > threshold).float()
+
             dim = () if self.dim is None else self.dim
             y_true = y_true.float()
             y_pred = y_pred.float()
 
-            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0, 1)), dim=dim)
-            predicted_positives = torch.sum(torch.round(torch.clamp(y_pred, 0, 1)), dim=dim)
+            true_positives = torch.sum(y_true * y_pred), dim=dim)
+            predicted_positives = torch.sum(y_pred, dim=dim)
 
             if self.dim is None and predicted_positives == 0:
                 self.values.append(torch.as_tensor(0.0))
+
             else:
                 self.values.append(true_positives / (predicted_positives + self.epsilon))
                 
@@ -135,15 +156,26 @@ class Recall(Metrics):
         super().__call__(y_pred, y_true)
 
         with torch.set_grad_enabled(False):
+
+            # Test if the y_pred given is not binary
+            if not is_binary(y_pred):
+
+                # If no threshold provided raise error
+                if threshold is None:
+                    raise ValueError("To calc binary accuracy you need to provide binary y_pred (or use threshold param)")
+
+                y_pred = (y_pred > threshold).float()
+
             dim = () if self.dim is None else self.dim            
             y_true = y_true.float()
             y_pred = y_pred.float()
             
-            true_positives = torch.sum(torch.round(torch.clamp(y_true * y_pred, 0.0, 1.0)), dim=dim)
-            possible_positives = torch.sum(torch.clamp(y_true, 0.0, 1.0), dim=dim)
+            true_positives = torch.sum(y_true * y_pred, dim=dim)
+            possible_positives = torch.sum(y_true, dim=dim)
             
             if self.dim is None and possible_positives == 0:
                 self.values.append(torch.as_tensor(0.0))
+                
             else:
                 self.values.append(true_positives / (possible_positives + self.epsilon))
                 

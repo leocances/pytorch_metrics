@@ -29,13 +29,3 @@ fscore_std = fscore.std
 fscore_func.reset()
 
 ```
-
-## Metrics available
-It contain the following metrics:
-- CategoricalAccuracy
-- BinaryAccuracy
-- Recall
-- Precision
-- FSCore (F1)
-- Ratio (Evaluate the truth number of adversarial generated)
-
