@@ -1,7 +1,10 @@
 import torch
+from torch import Tensor
 import numpy as np
+import scipy.stats as stats
 import functools
 from pytorch_metrics.utils import is_binary
+from typing import Union
 
 
 class Metrics:
@@ -14,22 +17,28 @@ class Metrics:
     def reset(self):
         self.values = []
 
-    def __call__(self, y_pred, y_true, **kwargs):
+    def __call__(self, y_pred: Tensor, y_true: Tensor, **kwargs) -> Metrics:
         pass
 
     @property
-    def value(self):
+    def value(self) -> Union[int, float]:
         return self.values[-1]
 
-    @functools.lru_cache
-    def mean(self):
-        nb_value = len(self.values)
-        accumulate = sum(self.values)
-        return accumulate / nb_value
+    def mean(self, axis: int = axis) -> float:
+        return np.mean(self.values, axis=axis)
 
-    @functools.lru_cache
-    def std(self):
-        return np.std(self.values)
+    def var(self, axis: int = 0) -> float:
+        return np.var(self.values, axis=axis)
+
+    def std(self, axis: int = 0) -> float:
+        return np.std(self.values, axis=axis)
+
+    def skew(self, axis: int = 0) -> float:
+        return stats.skew(self.values, axis=axis)
+
+    def kurtosis(self, axis: int = 0) -> float:
+        return stats.kurtosis(self.values, axis=axis)
+
 
 
 
@@ -175,7 +184,7 @@ class Recall(Metrics):
             
             if self.dim is None and possible_positives == 0:
                 self.values.append(torch.as_tensor(0.0))
-                
+
             else:
                 self.values.append(true_positives / (possible_positives + self.epsilon))
                 
