@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import functools
 
 
 class Metrics:
@@ -19,12 +20,14 @@ class Metrics:
     def value(self):
         return self.values[-1]
 
+    @functools.lru_cache
     @property
     def mean(self):
         nb_value = len(self.values)
         accumulate = sum(self.values)
         return accumulate / nb_value
 
+    @functools.lru_cache
     @property
     def std(self):
         return np.std(self.values)
